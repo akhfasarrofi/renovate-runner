@@ -1,0 +1,13 @@
+stages:
+  - renovate
+
+renovate:
+  stage: renovate
+  image: ghcr.io/renovatebot/renovate:full
+  resource_group: renovate
+  variables:
+    RENOVATE_CONFIG_FILE: "$CI_PROJECT_DIR/config.js"
+  script:
+    - renovate
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'

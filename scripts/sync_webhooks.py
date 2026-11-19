@@ -72,7 +72,7 @@ def sync(api_url, token, webhook_url, secret, paths):
 
 def main():
     needed = ("CI_API_V4_URL", "GITLAB_WEBHOOK_ADMIN_TOKEN", "NOTIFIER_WEBHOOK_URL",
-              "GITLAB_WEBHOOK_SECRET")
+              "WEBHOOK_SECRET")
     test_repository = os.environ.get("RENOVATE_TEST_REPOSITORY", "").strip()
     if not test_repository:
         needed += ("RENOVATE_TARGET_REPOSITORIES",)
@@ -89,7 +89,7 @@ def main():
              projects_in(api_url, token, groups(os.environ["RENOVATE_TARGET_REPOSITORIES"])))
     if not paths:
         raise ValueError("No active projects found in the configured groups")
-    sync(api_url, token, webhook_url, os.environ["GITLAB_WEBHOOK_SECRET"], paths)
+    sync(api_url, token, webhook_url, os.environ["WEBHOOK_SECRET"], paths)
 
 
 if __name__ == "__main__":

@@ -75,8 +75,8 @@ Copy [`env.example`](env.example) to `.env` (never commit it). Values are plain 
 | Variable                                 | Required    | Description                                                                                   |
 | ---------------------------------------- | ----------- | --------------------------------------------------------------------------------------------- |
 | `RENOVATE_PLATFORM`                      | no          | `gitlab` (default), `github`, `bitbucket`. Renovate reads the same variable.                  |
-| `RENOVATE_AUTHOR`                        | yes         | Renovate bot identity (see table above). Old name `RENOVATE_AUTHOR_ID` still works.           |
-| `WEBHOOK_SECRET`                         | one of two  | Shared webhook secret (`openssl rand -hex 32`). Old name `GITLAB_WEBHOOK_SECRET` still works. |
+| `RENOVATE_AUTHOR`                        | yes         | Renovate bot identity (see table above).           |
+| `WEBHOOK_SECRET`                         | one of two  | Shared webhook secret (`openssl rand -hex 32`). |
 | `GITLAB_WEBHOOK_SIGNING_TOKEN`           | one of two  | GitLab 19.1+ `whsec_...` token. GitLab only; not together with the secret.                    |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | one channel | Both or neither.                                                                              |
 | `TELEGRAM_MESSAGE_THREAD_ID`             | no          | Forum topic ID.                                                                               |
@@ -119,7 +119,7 @@ curl http://127.0.0.1:8080/healthz    # prints "ok"
 
 1. Create a bot user with Developer/Maintainer on the target groups; its token is `RENOVATE_TOKEN`, its numeric ID is `RENOVATE_AUTHOR`.
 2. In CI/CD → Variables set `RENOVATE_TOKEN` and `RENOVATE_TARGET_REPOSITORIES` (or `RENOVATE_TEST_REPOSITORY`). Add a pipeline schedule; the `renovate` job runs only for schedules (use Play on the schedule).
-3. Install MR webhooks: set `CI_API_V4_URL`, `GITLAB_WEBHOOK_ADMIN_TOKEN`, `NOTIFIER_WEBHOOK_URL` (public URL ending in `/webhook`), `GITLAB_WEBHOOK_SECRET`, `RENOVATE_TARGET_REPOSITORIES`, then `python3 scripts/sync_webhooks.py`. Re-run it when a project is added. It only supports the secret token, not the signing token.
+3. Install MR webhooks: set `CI_API_V4_URL`, `GITLAB_WEBHOOK_ADMIN_TOKEN`, `NOTIFIER_WEBHOOK_URL` (public URL ending in `/webhook`), `WEBHOOK_SECRET`, `RENOVATE_TARGET_REPOSITORIES`, then `python3 scripts/sync_webhooks.py`. Re-run it when a project is added. It only supports the secret token, not the signing token.
 
 ### GitHub
 

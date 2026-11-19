@@ -59,9 +59,9 @@ def main():
         parser.error("add --send to confirm real test messages")
 
     env = read_env(Path(args.env))
-    author_id = int(env["RENOVATE_AUTHOR_ID"])
+    author_id = int(env["RENOVATE_AUTHOR"])
     signing = env.get("GITLAB_WEBHOOK_SIGNING_TOKEN", "")
-    secret = env.get("GITLAB_WEBHOOK_SECRET", "")
+    secret = env.get("WEBHOOK_SECRET", "")
     if bool(signing) == bool(secret):
         parser.error("set exactly one GitLab webhook credential in .env")
 

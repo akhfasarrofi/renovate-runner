@@ -37,8 +37,8 @@ func first(getenv func(string) string, names ...string) string {
 func Load(getenv func(string) string) (Config, error) {
 	c := Config{
 		Platform:        first(getenv, "RENOVATE_PLATFORM"),
-		Author:          first(getenv, "RENOVATE_AUTHOR", "RENOVATE_AUTHOR_ID"), // _ID: old name
-		Secret:          first(getenv, "WEBHOOK_SECRET", "GITLAB_WEBHOOK_SECRET"),
+		Author:          first(getenv, "RENOVATE_AUTHOR"),
+		Secret:          first(getenv, "WEBHOOK_SECRET"),
 		SigningToken:    getenv("GITLAB_WEBHOOK_SIGNING_TOKEN"),
 		Lang:            first(getenv, "NOTIFY_LANG"),
 		TelegramToken:   getenv("TELEGRAM_BOT_TOKEN"),

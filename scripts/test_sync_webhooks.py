@@ -32,12 +32,12 @@ class SyncTests(unittest.TestCase):
         def fake_api(method, url, token, fields=None):
             calls.append((method, url, fields))
             if method == "GET":
-                return [{"id": 5, "url": "https://notify.example/webhook"}] if "partner-v2" in url else []
+                return [{"id": 5, "url": "https://notify.example/renovate/webhook"}] if "partner-v2" in url else []
             return {}
 
         with patch("sync_webhooks.api", side_effect=fake_api):
             sync("https://gitlab.example/api/v4", "admin-token",
-                 "https://notify.example/webhook", "secret",
+                 "https://notify.example/renovate/webhook", "secret",
                  ["frontend/partner-v2", "backend/api"])
         self.assertEqual([call[0] for call in calls], ["GET", "PUT", "GET", "POST"])
         self.assertIn("frontend%2Fpartner-v2/hooks/5", calls[1][1])

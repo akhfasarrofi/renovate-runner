@@ -1,0 +1,22 @@
+# Runs Renovate on GitHub. Set the secret RENOVATE_TOKEN and the variables
+# RENOVATE_TARGET_REPOSITORIES (orgs/users, comma-separated) or RENOVATE_TEST_REPOSITORY.
+name: renovate
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+concurrency: renovate
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    container: ghcr.io/renovatebot/renovate:full
+    steps:
+      - uses: actions/checkout@v4
+      - run: renovate
+        env:
+          RENOVATE_PLATFORM: github
+          RENOVATE_CONFIG_FILE: ${{ github.workspace }}/config.js
+          RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
+          GITHUB_COM_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
+          RENOVATE_TARGET_REPOSITORIES: ${{ vars.RENOVATE_TARGET_REPOSITORIES }}
+          RENOVATE_TEST_REPOSITORY: ${{ vars.RENOVATE_TEST_REPOSITORY }}

@@ -1,4 +1,4 @@
-package gitlab
+package platform
 
 import (
 	"crypto/hmac"
@@ -18,8 +18,8 @@ const (
 	maxClockSkew       = 300 // seconds, replay window for signed webhooks
 )
 
-// Authorized prefers Standard Webhooks signatures and supports the older GitLab token.
-func Authorized(h http.Header, body []byte, signingToken, legacySecret string, now time.Time) bool {
+// gitlabAuthorized prefers Standard Webhooks signatures and supports the older GitLab token.
+func gitlabAuthorized(h http.Header, body []byte, signingToken, legacySecret string, now time.Time) bool {
 	if signingToken != "" {
 		return validSignature(h, body, signingToken, now)
 	}

@@ -1,4 +1,4 @@
-// GitLab merge request webhook -> bot-only Telegram and Slack notifications.
+// GitLab, GitHub or Bitbucket Cloud merge/pull request webhook -> bot-only Telegram and Slack notifications.
 //
 // Keep this behind an HTTPS reverse proxy.
 package main
@@ -12,6 +12,7 @@ import (
 
 	"renovate-notifier/internal/config"
 	"renovate-notifier/internal/notify"
+	"renovate-notifier/internal/platform"
 	"renovate-notifier/internal/server"
 	"renovate-notifier/internal/store"
 )
@@ -30,6 +31,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	pf, err := platform.New(cfg.Platform, platform.Options{
+		Author: cfg.Author, ReopenTestMR: cfg.ReopenTestMR, Secret: cfg.Secret, SigningToken: cfg.SigningToken,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 	st, err := store.Open(dbFile)
 	if err != nil {
 		log.Fatalf("open database: %v", err)
@@ -38,10 +45,10 @@ func main() {
 	for _, s := range notify.Senders(cfg) {
 		channels = append(channels, s.Name)
 	}
-	log.Printf("Listening on port 8080; channels: %s", strings.Join(channels, ", "))
+	log.Printf("Listening on port 8080; platform: %s; channels: %s", cfg.Platform, strings.Join(channels, ", "))
 	srv := &http.Server{
 		Addr:              ":8080",
-		Handler:           &server.Server{Cfg: cfg, Store: st, Now: time.Now},
+		Handler:           &server.Server{Cfg: cfg, Platform: pf, Store: st, Now: time.Now},
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      60 * time.Second,

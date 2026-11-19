@@ -1,4 +1,4 @@
-package gitlab
+package platform
 
 import (
 	"encoding/json"
@@ -45,19 +45,19 @@ func TestNewBotMRFilters(t *testing.T) {
 		"reopen selected": {event("reopen", "", nil), "316:7", true},
 	}
 	for name, c := range cases {
-		item, err := ParseBotMR(c.payload, 42, c.reopen)
+		item, err := parseGitLab(c.payload, 42, c.reopen)
 		if err != nil || (item != nil) != c.notify {
 			t.Errorf("%s: item=%v err=%v", name, item, err)
 		}
 	}
 	bad := map[string]any{"object_kind": "merge_request", "object_attributes": "x"}
-	if _, err := ParseBotMR(bad, 42, ""); err == nil {
+	if _, err := parseGitLab(bad, 42, ""); err == nil {
 		t.Fatal("non-object attributes accepted")
 	}
 }
 
 func TestParseBotMRReadsDescription(t *testing.T) {
-	item, err := ParseBotMR(event("open", "", func(a, _ map[string]any) { a["description"] = plainUpdate + osvNote }), 42, "")
+	item, err := parseGitLab(event("open", "", func(a, _ map[string]any) { a["description"] = plainUpdate + osvNote }), 42, "")
 	if err != nil || item == nil {
 		t.Fatalf("item=%v err=%v", item, err)
 	}

@@ -1,4 +1,4 @@
-package gitlab
+package platform
 
 import (
 	"crypto/hmac"
@@ -27,24 +27,24 @@ func TestAuthorized(t *testing.T) {
 	h.Set("webhook-id", "msg_1")
 	h.Set("webhook-timestamp", ts)
 	h.Set("webhook-signature", "v1,bad "+sign("msg_1", ts, body))
-	if !Authorized(h, body, signingToken, "", now) {
+	if !gitlabAuthorized(h, body, signingToken, "", now) {
 		t.Fatal("valid signature among several rejected")
 	}
-	if Authorized(h, []byte(`{"a":2}`), signingToken, "", now) {
+	if gitlabAuthorized(h, []byte(`{"a":2}`), signingToken, "", now) {
 		t.Fatal("tampered body accepted")
 	}
-	if Authorized(h, body, signingToken, "", now.Add(301*time.Second)) {
+	if gitlabAuthorized(h, body, signingToken, "", now.Add(301*time.Second)) {
 		t.Fatal("stale timestamp accepted")
 	}
-	if Authorized(h, body, "whsec_short", "", now) {
+	if gitlabAuthorized(h, body, "whsec_short", "", now) {
 		t.Fatal("malformed signing token accepted")
 	}
 	legacy := http.Header{}
 	legacy.Set("X-Gitlab-Token", "s3cret")
-	if !Authorized(legacy, body, "", "s3cret", now) || Authorized(legacy, body, "", "other", now) {
+	if !gitlabAuthorized(legacy, body, "", "s3cret", now) || gitlabAuthorized(legacy, body, "", "other", now) {
 		t.Fatal("legacy token check wrong")
 	}
-	if Authorized(http.Header{}, body, "", "", now) {
+	if gitlabAuthorized(http.Header{}, body, "", "", now) {
 		t.Fatal("empty credentials accepted")
 	}
 }

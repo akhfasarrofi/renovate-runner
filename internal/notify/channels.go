@@ -14,6 +14,9 @@ import (
 	"renovate-notifier/internal/config"
 )
 
+// TelegramAPI is the Bot API base URL. It is a variable only so tests can point it at a fake.
+var TelegramAPI = "https://api.telegram.org"
+
 var httpClient = &http.Client{Timeout: 5 * time.Second}
 
 // Sender delivers one message to one chat channel.
@@ -27,7 +30,7 @@ func Senders(c config.Config) []Sender {
 	var out []Sender
 	if c.TelegramToken != "" {
 		out = append(out, Sender{"telegram", func(m string) error {
-			return sendTelegram(c.TelegramToken, c.TelegramChatID, m, c.TelegramAPIBase, c.ThreadID)
+			return sendTelegram(c.TelegramToken, c.TelegramChatID, m, c.ThreadID)
 		}})
 	}
 	if c.SlackWebhookURL != "" {
@@ -36,7 +39,7 @@ func Senders(c config.Config) []Sender {
 	return out
 }
 
-func sendTelegram(token, chatID, message, apiBase string, threadID int64) error {
+func sendTelegram(token, chatID, message string, threadID int64) error {
 	data := map[string]any{
 		"chat_id":              chatID,
 		"text":                 message,
@@ -45,7 +48,7 @@ func sendTelegram(token, chatID, message, apiBase string, threadID int64) error 
 	if threadID != 0 {
 		data["message_thread_id"] = threadID
 	}
-	out, err := postJSON(strings.TrimRight(apiBase, "/")+"/bot"+token+"/sendMessage", data, 1<<20)
+	out, err := postJSON(TelegramAPI+"/bot"+token+"/sendMessage", data, 1<<20)
 	if err != nil {
 		return err
 	}

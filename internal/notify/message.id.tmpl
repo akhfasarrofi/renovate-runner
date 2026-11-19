@@ -4,5 +4,5 @@
 {{else if .VulnSummary}}{{.VulnSummary}}
 {{end}}
 Repo: {{.Repo}}
-MR: !{{.IID}} → {{.Target}}{{if .Reopened}} · dibuka kembali{{end}}
+{{.Label}}: {{.Ref}} → {{.Target}}{{if .Reopened}} · dibuka kembali{{end}}
 {{.URL}}

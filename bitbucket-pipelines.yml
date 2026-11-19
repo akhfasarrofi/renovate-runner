@@ -1,0 +1,21 @@
+# Bitbucket Cloud. Add a schedule for the custom pipeline "renovate" (Repository settings >
+# Pipelines > Schedules). Set the variables RENOVATE_USERNAME (Atlassian email) and
+# RENOVATE_PASSWORD (API token, scopes: https://docs.renovatebot.com/modules/platform/bitbucket/),
+# RENOVATE_TARGET_REPOSITORIES (workspaces) or RENOVATE_TEST_REPOSITORY. GITHUB_COM_TOKEN is optional (release notes).
+pipelines:
+  default:
+    - step:
+        name: test
+        image: golang:1.25
+        script:
+          - go vet ./...
+          - go test -race ./...
+  custom:
+    renovate:
+      - step:
+          name: renovate
+          image: ghcr.io/renovatebot/renovate:full
+          script:
+            - export RENOVATE_PLATFORM=bitbucket
+            - export RENOVATE_CONFIG_FILE="$BITBUCKET_CLONE_DIR/config.js"
+            - renovate

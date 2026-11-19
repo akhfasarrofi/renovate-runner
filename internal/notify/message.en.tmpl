@@ -1,0 +1,8 @@
+{{if .TestReopen}}🧪 Test reopen · no severity{{else}}🚨 Security · {{.Severity}}{{end}}
+{{if .Package}}{{.Package}}{{if .Change}} {{.Change}}{{end}}{{if .MorePackages}} (+{{.MorePackages}} more){{end}}{{else}}{{or .Title "(untitled)"}}{{end}}
+{{if .VulnIDs}}{{.VulnIDs}}{{if .VulnSummary}} — {{.VulnSummary}}{{end}}
+{{else if .VulnSummary}}{{.VulnSummary}}
+{{end}}
+Repo: {{.Repo}}
+{{.Label}}: {{.Ref}} → {{.Target}}{{if .Reopened}} · reopened{{end}}
+{{.URL}}

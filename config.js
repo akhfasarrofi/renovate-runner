@@ -1,7 +1,13 @@
 // Global Renovate config. Keep this file in the renovate-runner project.
-// Testing: set RENOVATE_TEST_REPOSITORY=group/project to run on that one project only.
-// Production: RENOVATE_TARGET_REPOSITORIES lists GitLab groups, e.g. "frontend,backend".
-// Renovate then runs on every project inside those groups (subgroups: "frontend/web").
+// RENOVATE_PLATFORM: gitlab (default), github or bitbucket.
+// Testing: set RENOVATE_TEST_REPOSITORY=owner/repo to run on that one repository only.
+// Production: RENOVATE_TARGET_REPOSITORIES lists GitLab groups, GitHub orgs/users or
+// Bitbucket workspaces, e.g. "frontend,backend". Renovate then runs on every repository
+// inside them (GitLab subgroups: "frontend/web").
+const platform = (process.env.RENOVATE_PLATFORM || "gitlab").trim();
+if (!["gitlab", "github", "bitbucket"].includes(platform)) {
+  throw new Error("RENOVATE_PLATFORM must be gitlab, github or bitbucket");
+}
 const testRepository = (process.env.RENOVATE_TEST_REPOSITORY || "").trim();
 const groups = (process.env.RENOVATE_TARGET_REPOSITORIES || "")
   .split(/[\n,]/)
@@ -9,25 +15,33 @@ const groups = (process.env.RENOVATE_TARGET_REPOSITORIES || "")
   .filter(Boolean);
 
 if (testRepository && !testRepository.includes("/")) {
-  throw new Error("RENOVATE_TEST_REPOSITORY must be a group/project path");
+  throw new Error("RENOVATE_TEST_REPOSITORY must be an owner/repo path");
 }
 if (
   !testRepository &&
   (!groups.length || new Set(groups).size !== groups.length)
 ) {
   throw new Error(
-    "RENOVATE_TARGET_REPOSITORIES must list unique GitLab group names",
+    "RENOVATE_TARGET_REPOSITORIES must list unique group/org/workspace names",
   );
 }
 
-// The platform filters by group, so only these groups' projects are listed.
+// GitLab filters by group on the server side. Renovate documents autodiscoverNamespaces
+// only for GitLab/Gitea/Forgejo, so GitHub and Bitbucket use a glob filter instead.
+const discovery =
+  platform === "gitlab"
+    ? { autodiscoverNamespaces: groups }
+    : { autodiscoverFilter: groups.map((group) => `${group}/*`) };
 const targets = testRepository
   ? { repositories: [testRepository] }
-  : { autodiscover: true, autodiscoverNamespaces: groups };
+  : { autodiscover: true, ...discovery };
 
 module.exports = {
-  platform: "gitlab",
-  endpoint: process.env.CI_API_V4_URL,
+  platform,
+  // GitLab CI provides its API URL; elsewhere use RENOVATE_ENDPOINT or Renovate's default.
+  ...(platform === "gitlab" && process.env.CI_API_V4_URL
+    ? { endpoint: process.env.CI_API_V4_URL }
+    : {}),
   globalExtends: ["config:recommended", "mergeConfidence:all-badges"],
   onboarding: false,
   requireConfig: "optional",

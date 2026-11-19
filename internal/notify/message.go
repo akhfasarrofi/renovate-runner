@@ -5,15 +5,21 @@ import (
 	"strings"
 	"text/template"
 
-	"renovate-notifier/internal/gitlab"
+	"renovate-notifier/internal/platform"
 )
 
-// The notification text lives in message.tmpl; edit it there.
+// The notification text lives in message.<lang>.tmpl; edit it there.
 //
-//go:embed message.tmpl
-var messageTemplateText string
+//go:embed message.en.tmpl
+var messageEN string
 
-var messageTemplate = template.Must(template.New("message").Parse(messageTemplateText))
+//go:embed message.id.tmpl
+var messageID string
+
+var templates = map[string]*template.Template{
+	"en": template.Must(template.New("en").Parse(messageEN)),
+	"id": template.Must(template.New("id").Parse(messageID)),
+}
 
 // Limits in characters. 4096 is Telegram's maximum message length.
 const (
@@ -30,7 +36,8 @@ type messageData struct {
 	TestReopen bool
 	Reopened   bool
 	Repo       string
-	IID        int64
+	Label      string
+	Ref        string
 	Title      string
 	Target     string
 	URL        string
@@ -43,14 +50,20 @@ type messageData struct {
 }
 
 // Message renders the notification text for a channel-agnostic MR event.
-func Message(m *gitlab.MR) (string, error) {
+// lang is "en" or "id"; anything else falls back to "en".
+func Message(m *platform.MR, lang string) (string, error) {
+	tmpl := templates[lang]
+	if tmpl == nil {
+		tmpl = templates["en"]
+	}
 	var out strings.Builder
-	err := messageTemplate.Execute(&out, messageData{
+	err := tmpl.Execute(&out, messageData{
 		Severity:   m.Severity,
 		TestReopen: m.TestReopen,
 		Reopened:   m.Reopened(),
 		Repo:       cut(m.Repo, maxRepoChars),
-		IID:        m.IID,
+		Label:      m.Label,
+		Ref:        m.Ref,
 		Title:      cut(m.Title, maxTitleChars),
 		Target:     m.Target,
 		URL:        cut(m.URL, maxURLChars),

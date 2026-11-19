@@ -60,10 +60,13 @@ func migrate(db *sql.DB) error {
 
 // Delivery identifies one notification: an MR event sent to one channel.
 type Delivery struct {
-	ProjectID, IID int64
-	Reopened       bool
-	EventKey       string // distinguishes reopen cycles; ignored for first-open events
-	Channel        string
+	// RepoID is text so Bitbucket UUIDs fit. SQLite's INTEGER affinity stores numeric
+	// strings as integers, so rows written by older versions still match.
+	RepoID   string
+	IID      int64
+	Reopened bool
+	EventKey string // distinguishes reopen cycles; ignored for first-open events
+	Channel  string
 }
 
 // NotifyOnce calls send unless d was already delivered, and records success.
@@ -80,10 +83,10 @@ func (s *Store) NotifyOnce(d Delivery, send func() error) (bool, error) {
 	var row *sql.Row
 	if !d.Reopened {
 		row = tx.QueryRow("SELECT 1 FROM sent_channels WHERE project_id=? AND iid=? AND channel=?",
-			d.ProjectID, d.IID, d.Channel)
+			d.RepoID, d.IID, d.Channel)
 	} else {
 		row = tx.QueryRow("SELECT 1 FROM sent_reopens WHERE project_id=? AND iid=? AND event_key=? AND channel=?",
-			d.ProjectID, d.IID, d.EventKey, d.Channel)
+			d.RepoID, d.IID, d.EventKey, d.Channel)
 	}
 	var found int
 	switch err := row.Scan(&found); {
@@ -98,10 +101,10 @@ func (s *Store) NotifyOnce(d Delivery, send func() error) (bool, error) {
 	}
 	if !d.Reopened {
 		_, err = tx.Exec("INSERT INTO sent_channels (project_id, iid, channel) VALUES (?, ?, ?)",
-			d.ProjectID, d.IID, d.Channel)
+			d.RepoID, d.IID, d.Channel)
 	} else {
 		_, err = tx.Exec("INSERT INTO sent_reopens (project_id, iid, event_key, channel) VALUES (?, ?, ?, ?)",
-			d.ProjectID, d.IID, d.EventKey, d.Channel)
+			d.RepoID, d.IID, d.EventKey, d.Channel)
 	}
 	if err != nil {
 		return false, err

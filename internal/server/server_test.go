@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"renovate-notifier/internal/config"
+	"renovate-notifier/internal/notify"
+	"renovate-notifier/internal/platform"
 	"renovate-notifier/internal/store"
 )
 
@@ -49,17 +51,22 @@ func TestWebhookDeliveryAndDedup(t *testing.T) {
 	fake := &fakeChannels{}
 	ts := fake.server(t)
 	defer ts.Close()
+	old := notify.TelegramAPI
+	notify.TelegramAPI = ts.URL
+	t.Cleanup(func() { notify.TelegramAPI = old })
 	n, err := store.Open(filepath.Join(t.TempDir(), "n.sqlite3"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := &Server{
-		Cfg: config.Config{
-			AuthorID: 42, LegacySecret: "s3cret", TelegramToken: "TOKEN", TelegramChatID: "-1",
-			TelegramAPIBase: ts.URL + "/", SlackWebhookURL: ts.URL + "/slack",
-		},
-		Store: n, Now: time.Now,
+	cfg := config.Config{
+		Platform: "gitlab", Author: "42", Secret: "s3cret", Lang: "en", TelegramToken: "TOKEN", TelegramChatID: "-1",
+		SlackWebhookURL: ts.URL + "/slack",
 	}
+	pf, err := platform.New(cfg.Platform, platform.Options{Author: cfg.Author, Secret: cfg.Secret})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := &Server{Cfg: cfg, Platform: pf, Store: n, Now: time.Now}
 	post := func(payload any, secret string) int {
 		body, _ := json.Marshal(payload)
 		r := httptest.NewRequest("POST", "/webhook", strings.NewReader(string(body)))

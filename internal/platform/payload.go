@@ -1,4 +1,4 @@
-package gitlab
+package platform
 
 import (
 	"encoding/json"

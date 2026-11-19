@@ -1,10 +1,8 @@
 package server
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"io"
 	"log"
 	"net/http"
@@ -12,8 +10,8 @@ import (
 	"time"
 
 	"renovate-notifier/internal/config"
-	"renovate-notifier/internal/gitlab"
 	"renovate-notifier/internal/notify"
+	"renovate-notifier/internal/platform"
 	"renovate-notifier/internal/store"
 )
 
@@ -21,9 +19,10 @@ const maxBodyBytes = 1_000_000
 
 // Server is the webhook HTTP handler.
 type Server struct {
-	Cfg   config.Config
-	Store *store.Store
-	Now   func() time.Time // injectable clock for the replay window
+	Cfg      config.Config
+	Platform platform.Platform
+	Store    *store.Store
+	Now      func() time.Time // injectable clock for the replay window
 }
 
 func respond(w http.ResponseWriter, status int, body string) {
@@ -49,7 +48,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // webhook answers 200 for events that need no notification, 503 when any channel fails so
-// GitLab retries, and 401/400/413 for rejected requests.
+// the platform may retry, and 401/400/413 for rejected requests.
 func (s *Server) webhook(w http.ResponseWriter, r *http.Request) {
 	if r.RequestURI != "/webhook" {
 		respond(w, http.StatusNotFound, "")
@@ -60,15 +59,11 @@ func (s *Server) webhook(w http.ResponseWriter, r *http.Request) {
 		respond(w, status, "")
 		return
 	}
-	if !gitlab.Authorized(r.Header, body, s.Cfg.SigningToken, s.Cfg.LegacySecret, s.Now()) {
+	if !s.Platform.Authorized(r.Header, body, s.Now()) {
 		respond(w, http.StatusUnauthorized, "")
 		return
 	}
-	if r.Header.Get("X-Gitlab-Event") != "Merge Request Hook" {
-		respond(w, http.StatusOK, "")
-		return
-	}
-	item, err := decodeEvent(body, s.Cfg)
+	item, err := s.Platform.Parse(r.Header, body)
 	if err != nil {
 		respond(w, http.StatusBadRequest, "")
 		return
@@ -77,7 +72,7 @@ func (s *Server) webhook(w http.ResponseWriter, r *http.Request) {
 		respond(w, http.StatusOK, "")
 		return
 	}
-	message, err := notify.Message(item)
+	message, err := notify.Message(item, s.Cfg.Lang)
 	if err != nil {
 		log.Printf("render message: %v", err)
 		respond(w, http.StatusInternalServerError, "")
@@ -102,28 +97,13 @@ func readBody(r *http.Request) ([]byte, int) {
 	return body, 0
 }
 
-// decodeEvent parses the JSON body and applies the notification filters.
-// It returns a nil item when the event is valid but must not notify.
-func decodeEvent(body []byte, cfg config.Config) (*gitlab.MR, error) {
-	var event map[string]any
-	dec := json.NewDecoder(bytes.NewReader(body))
-	dec.UseNumber()
-	if err := dec.Decode(&event); err != nil {
-		return nil, err
-	}
-	if dec.More() {
-		return nil, gitlab.ErrBadPayload
-	}
-	return gitlab.ParseBotMR(event, cfg.AuthorID, cfg.ReopenTestMR)
-}
-
-// eventKey identifies one reopen event. GitLab delivery IDs stay stable on retries but
+// eventKey identifies one reopen event. Delivery IDs stay stable on retries but
 // differ across reopen cycles, so use the MR action time only on instances without one.
-func eventKey(item *gitlab.MR, h http.Header, body []byte) string {
+func eventKey(item *platform.MR, h http.Header, body []byte) string {
 	if !item.Reopened() {
 		return ""
 	}
-	for _, key := range []string{h.Get("webhook-id"), h.Get("Idempotency-Key"), item.ActionedAt, item.UpdatedAt} {
+	for _, key := range []string{h.Get("webhook-id"), h.Get("Idempotency-Key"), h.Get("X-GitHub-Delivery"), item.ActionedAt, item.UpdatedAt} {
 		if key != "" {
 			return key
 		}
@@ -133,9 +113,9 @@ func eventKey(item *gitlab.MR, h http.Header, body []byte) string {
 }
 
 // deliver sends message to every configured channel and reports whether any failed.
-func (s *Server) deliver(item *gitlab.MR, key, message string) (failed bool) {
+func (s *Server) deliver(item *platform.MR, key, message string) (failed bool) {
 	for _, snd := range notify.Senders(s.Cfg) {
-		created, err := s.Store.NotifyOnce(store.Delivery{ProjectID: item.ProjectID, IID: item.IID, Reopened: item.Reopened(), EventKey: key, Channel: snd.Name},
+		created, err := s.Store.NotifyOnce(store.Delivery{RepoID: item.RepoID, IID: item.IID, Reopened: item.Reopened(), EventKey: key, Channel: snd.Name},
 			func() error { return snd.Send(message) })
 		if err != nil {
 			log.Printf("%s delivery failed; webhook can be retried: %v", snd.Name, err)
@@ -146,7 +126,7 @@ func (s *Server) deliver(item *gitlab.MR, key, message string) (failed bool) {
 		if created {
 			state = "sent"
 		}
-		log.Printf("%s notification %s: project=%d iid=%d", snd.Name, state, item.ProjectID, item.IID)
+		log.Printf("%s notification %s: repo=%s iid=%d", snd.Name, state, item.RepoID, item.IID)
 	}
 	return failed
 }

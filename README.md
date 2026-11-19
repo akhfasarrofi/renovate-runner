@@ -13,6 +13,10 @@ Two independent parts:
 
 The notifier is not started by the pipeline. It reacts to webhooks, so a message arrives seconds after the MR/PR is created.
 
+![Architecture of renovate-runner: the Renovate CI job opens MRs/PRs, the platform sends a webhook through an HTTPS proxy to the notifier, which filters, deduplicates in SQLite and sends Telegram and Slack messages](docs/renovate-runner-and-mr-notifier.webp)
+
+Interactive version: [`docs/architecture.html`](docs/architecture.html) (search nodes, trace routes, export).
+
 | | GitLab | GitHub | Bitbucket Cloud |
 |---|---|---|---|
 | Webhook auth | secret token or signing token | HMAC `X-Hub-Signature-256` | HMAC `X-Hub-Signature` |

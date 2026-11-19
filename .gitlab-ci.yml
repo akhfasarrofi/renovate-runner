@@ -1,5 +1,18 @@
 stages:
+  - test
   - renovate
+
+# Checks notifier code on merge requests and on the default branch. Scheduled
+# pipelines skip it, so Renovate never waits on tests.
+test:
+  stage: test
+  image: golang:1.25
+  script:
+    - go vet ./...
+    - go test -race ./...
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
 
 renovate:
   stage: renovate

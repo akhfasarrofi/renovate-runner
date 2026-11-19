@@ -1,0 +1,8 @@
+{{if .TestReopen}}🧪 Test reopen · tanpa severity{{else}}🚨 Security · {{.Severity}}{{end}}
+{{if .Package}}{{.Package}}{{if .Change}} {{.Change}}{{end}}{{if .MorePackages}} (+{{.MorePackages}} paket lain){{end}}{{else}}{{or .Title "(tanpa judul)"}}{{end}}
+{{if .VulnIDs}}{{.VulnIDs}}{{if .VulnSummary}} — {{.VulnSummary}}{{end}}
+{{else if .VulnSummary}}{{.VulnSummary}}
+{{end}}
+Repo: {{.Repo}}
+{{.Label}}: {{.Ref}} → {{.Target}}{{if .Reopened}} · dibuka kembali{{end}}
+{{.URL}}

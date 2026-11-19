@@ -1,12 +1,53 @@
 // Global Renovate config. Keep this file in the renovate-runner project.
+// RENOVATE_PLATFORM: gitlab (default), github or bitbucket.
+// Testing: set RENOVATE_TEST_REPOSITORY=owner/repo to run on that one repository only.
+// Production: RENOVATE_TARGET_REPOSITORIES lists GitLab groups, GitHub orgs/users or
+// Bitbucket workspaces, e.g. "frontend,backend". Renovate then runs on every repository
+// inside them (GitLab subgroups: "frontend/web").
+const platform = (process.env.RENOVATE_PLATFORM || "gitlab").trim();
+if (!["gitlab", "github", "bitbucket"].includes(platform)) {
+  throw new Error("RENOVATE_PLATFORM must be gitlab, github or bitbucket");
+}
+const testRepository = (process.env.RENOVATE_TEST_REPOSITORY || "").trim();
+const groups = (process.env.RENOVATE_TARGET_REPOSITORIES || "")
+  .split(/[\n,]/)
+  .map((group) => group.trim())
+  .filter(Boolean);
+
+if (testRepository && !testRepository.includes("/")) {
+  throw new Error("RENOVATE_TEST_REPOSITORY must be an owner/repo path");
+}
+if (
+  !testRepository &&
+  (!groups.length || new Set(groups).size !== groups.length)
+) {
+  throw new Error(
+    "RENOVATE_TARGET_REPOSITORIES must list unique group/org/workspace names",
+  );
+}
+
+// GitLab filters by group on the server side. Renovate documents autodiscoverNamespaces
+// only for GitLab/Gitea/Forgejo, so GitHub and Bitbucket use a glob filter instead.
+const discovery =
+  platform === "gitlab"
+    ? { autodiscoverNamespaces: groups }
+    : { autodiscoverFilter: groups.map((group) => `${group}/*`) };
+const targets = testRepository
+  ? { repositories: [testRepository] }
+  : { autodiscover: true, ...discovery };
+
 module.exports = {
-  platform: "gitlab",
-  endpoint: process.env.CI_API_V4_URL,
-  globalExtends: ["config:recommended"],
+  platform,
+  // GitLab CI provides its API URL; elsewhere use RENOVATE_ENDPOINT or Renovate's default.
+  ...(platform === "gitlab" && process.env.CI_API_V4_URL
+    ? { endpoint: process.env.CI_API_V4_URL }
+    : {}),
+  globalExtends: ["config:recommended", "mergeConfidence:all-badges"],
   onboarding: false,
   requireConfig: "optional",
   automerge: false,
-  // Begin with one pilot. Add more paths after validating its MRs.
-  repositories: ["frontend/partner-v2"],
+  // OSV alerts generate security-fix MRs when a direct dependency has a fix.
+  osvVulnerabilityAlerts: true,
+  ...targets,
   baseBranchPatterns: ["$default"],
 };

@@ -17,7 +17,6 @@ test:
 renovate:
   stage: renovate
   image: ghcr.io/renovatebot/renovate:full
-  tags: [docker, linux]
   resource_group: renovate
   timeout: 3h
   variables:

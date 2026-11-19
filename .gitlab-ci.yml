@@ -10,6 +10,8 @@ test:
   script:
     - go vet ./...
     - go test -race ./...
+    - echo "test=[$RENOVATE_TEST_REPOSITORY] sha=$CI_COMMIT_SHORT_SHA protected=$CI_COMMIT_REF_PROTECTED"
+    - renovate
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'

@@ -88,7 +88,9 @@ func postJSON(target string, data any, limit int64) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+		// Telegram and Slack put the reason in the body (e.g. "message thread not found").
+		reason, _ := io.ReadAll(io.LimitReader(resp.Body, 200))
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, bytes.TrimSpace(reason))
 	}
 	out, err := io.ReadAll(io.LimitReader(resp.Body, limit))
 	return out, cleanErr(err)

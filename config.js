@@ -1,6 +1,6 @@
 // Global Renovate config. Keep this file in the renovate-runner project.
 // RENOVATE_PLATFORM: gitlab (default), github or bitbucket.
-// Testing: set RENOVATE_TEST_REPOSITORY=owner/repo to run on that one repository only.
+// Testing: set RENOVATE_TEST_REPOSITORY=owner/repo[,owner/repo2] to run on those repositories only.
 // Production: RENOVATE_TARGET_REPOSITORIES lists GitLab groups, GitHub orgs/users or
 // Bitbucket workspaces, e.g. "frontend,backend". Renovate then runs on every repository
 // inside them (GitLab subgroups: "frontend/web").
@@ -8,17 +8,20 @@ const platform = (process.env.RENOVATE_PLATFORM || "gitlab").trim();
 if (!["gitlab", "github", "bitbucket"].includes(platform)) {
   throw new Error("RENOVATE_PLATFORM must be gitlab, github or bitbucket");
 }
-const testRepository = (process.env.RENOVATE_TEST_REPOSITORY || "").trim();
+const testRepositories = (process.env.RENOVATE_TEST_REPOSITORY || "")
+  .split(/[\n,]/)
+  .map((repository) => repository.trim())
+  .filter(Boolean);
 const groups = (process.env.RENOVATE_TARGET_REPOSITORIES || "")
   .split(/[\n,]/)
   .map((group) => group.trim())
   .filter(Boolean);
 
-if (testRepository && !testRepository.includes("/")) {
-  throw new Error("RENOVATE_TEST_REPOSITORY must be an owner/repo path");
+if (testRepositories.some((repository) => !repository.includes("/"))) {
+  throw new Error("RENOVATE_TEST_REPOSITORY must list owner/repo paths");
 }
 if (
-  !testRepository &&
+  !testRepositories.length &&
   (!groups.length || new Set(groups).size !== groups.length)
 ) {
   throw new Error(
@@ -32,8 +35,8 @@ const discovery =
   platform === "gitlab"
     ? { autodiscoverNamespaces: groups }
     : { autodiscoverFilter: groups.map((group) => `${group}/*`) };
-const targets = testRepository
-  ? { repositories: [testRepository] }
+const targets = testRepositories.length
+  ? { repositories: testRepositories }
   : { autodiscover: true, ...discovery };
 
 module.exports = {

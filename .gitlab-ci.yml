@@ -18,10 +18,17 @@ renovate:
   stage: renovate
   image: ghcr.io/renovatebot/renovate:full
   resource_group: renovate
+  timeout: 3h
   variables:
     RENOVATE_CONFIG_FILE: "$CI_PROJECT_DIR/config.js"
+    RENOVATE_BASE_DIR: "$CI_PROJECT_DIR/.renovate"
+    RENOVATE_REPOSITORY_CACHE: "enabled"
+  # Only reused when the next job lands on the same runner (no distributed cache).
+  cache:
+    key: renovate
+    paths:
+      - .renovate/cache/
   script:
-    - echo "test=[$RENOVATE_TEST_REPOSITORY] sha=$CI_COMMIT_SHORT_SHA protected=$CI_COMMIT_REF_PROTECTED"
     - renovate
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'

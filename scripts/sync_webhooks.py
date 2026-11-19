@@ -1,4 +1,4 @@
-"""Add/update MR webhooks on RENOVATE_TEST_REPOSITORY (one project), else on every
+"""Add/update MR webhooks on RENOVATE_TEST_REPOSITORY (comma-separated projects), else on every
 project in RENOVATE_TARGET_REPOSITORIES (GitLab groups).
 
 Reads variables from the shell, falling back to .env in the repo root.
@@ -63,24 +63,35 @@ def projects_in(api_url, token, group_names):
 
 
 def sync(api_url, token, webhook_url, secret, paths):
+    failed = []
     for path in paths:
-        url = f"{api_url.rstrip('/')}/projects/{quote(path, safe='')}/hooks"
-        hooks = get_all(url, token)
-        matches = [hook for hook in hooks if hook.get("url") == webhook_url]
-        if len(matches) > 1:
-            raise ValueError(f"Multiple hooks have the configured URL in {path}; resolve duplicates manually")
-        fields = {
-            "url": webhook_url,
-            "token": secret,
-            "merge_requests_events": "true",
-            "push_events": "false",
-        }
-        if matches:
-            api("PUT", url + f"/{matches[0]['id']}", token, fields)
-            print(f"Updated MR webhook: {path}")
-        else:
-            api("POST", url, token, fields)
-            print(f"Created MR webhook: {path}")
+        try:
+            sync_one(api_url, token, webhook_url, secret, path)
+        except HTTPError as error:
+            print(f"FAILED {path}: HTTP {error.code} {snippet(error.read())}", file=sys.stderr)
+            failed.append(path)
+    if failed:
+        raise ValueError(f"{len(failed)} of {len(paths)} projects failed: " + ", ".join(failed))
+
+
+def sync_one(api_url, token, webhook_url, secret, path):
+    url = f"{api_url.rstrip('/')}/projects/{quote(path, safe='')}/hooks"
+    hooks = get_all(url, token)
+    matches = [hook for hook in hooks if hook.get("url") == webhook_url]
+    if len(matches) > 1:
+        raise ValueError(f"Multiple hooks have the configured URL in {path}; resolve duplicates manually")
+    fields = {
+        "url": webhook_url,
+        "token": secret,
+        "merge_requests_events": "true",
+        "push_events": "false",
+    }
+    if matches:
+        api("PUT", url + f"/{matches[0]['id']}", token, fields)
+        print(f"Updated MR webhook: {path}")
+    else:
+        api("POST", url, token, fields)
+        print(f"Created MR webhook: {path}")
 
 
 def main():
@@ -91,19 +102,21 @@ def main():
             os.environ.setdefault(name, value)
     needed = ("CI_API_V4_URL", "GITLAB_WEBHOOK_ADMIN_TOKEN", "NOTIFIER_WEBHOOK_URL",
               "WEBHOOK_SECRET")
-    test_repository = os.environ.get("RENOVATE_TEST_REPOSITORY", "").strip()
-    if not test_repository:
+    test_repositories = [item.strip() for item in
+                         os.environ.get("RENOVATE_TEST_REPOSITORY", "").replace("\n", ",").split(",")
+                         if item.strip()]
+    if not test_repositories:
         needed += ("RENOVATE_TARGET_REPOSITORIES",)
-    elif "/" not in test_repository:
-        raise ValueError("RENOVATE_TEST_REPOSITORY must be a group/project path")
+    elif any("/" not in item for item in test_repositories):
+        raise ValueError("RENOVATE_TEST_REPOSITORY must list group/project paths")
     missing = [name for name in needed if not os.environ.get(name)]
     if missing:
         raise ValueError("Missing: " + ", ".join(missing))
     webhook_url = os.environ["NOTIFIER_WEBHOOK_URL"]
-    if not webhook_url.startswith("https://") or not webhook_url.endswith("/webhook"):
-        raise ValueError("NOTIFIER_WEBHOOK_URL must be an HTTPS URL ending in /webhook")
+    if not webhook_url.startswith("https://") or not webhook_url.endswith("/renovate/webhook"):
+        raise ValueError("NOTIFIER_WEBHOOK_URL must be an HTTPS URL ending in /renovate/webhook")
     api_url, token = os.environ["CI_API_V4_URL"], os.environ["GITLAB_WEBHOOK_ADMIN_TOKEN"]
-    paths = ([test_repository] if test_repository else
+    paths = (sorted(set(test_repositories)) if test_repositories else
              projects_in(api_url, token, groups(os.environ["RENOVATE_TARGET_REPOSITORIES"])))
     if not paths:
         raise ValueError("No active projects found in the configured groups")

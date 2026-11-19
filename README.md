@@ -109,7 +109,7 @@ docker compose up -d --build
 curl http://127.0.0.1:8080/healthz    # prints "ok"
 ```
 
-- Port 8080 binds to `127.0.0.1`; put an HTTPS reverse proxy in front ([`nginx.conf.example`](nginx.conf.example): only `/webhook` and `/healthz`, 1 MB body limit).
+- Port 8080 binds to `127.0.0.1`; put an HTTPS reverse proxy in front ([`nginx.conf.example`](nginx.conf.example): only `/renovate/webhook` and `/healthz`, 1 MB body limit).
 - The container is read-only, runs as UID 65532 and writes only to the `/data` volume (`notified.sqlite3`). **Keep the volume persistent**, or retries can notify twice.
 - Update: `git pull && docker compose up -d --build`. Changes to `config.js` need no redeploy.
 
@@ -119,19 +119,19 @@ curl http://127.0.0.1:8080/healthz    # prints "ok"
 
 1. Create a bot user with Developer/Maintainer on the target groups; its token is `RENOVATE_TOKEN`, its numeric ID is `RENOVATE_AUTHOR`.
 2. In CI/CD → Variables set `RENOVATE_TOKEN` and `RENOVATE_TARGET_REPOSITORIES` (or `RENOVATE_TEST_REPOSITORY`). Add a pipeline schedule; the `renovate` job runs only for schedules (use Play on the schedule).
-3. Install MR webhooks: set `CI_API_V4_URL`, `GITLAB_WEBHOOK_ADMIN_TOKEN`, `NOTIFIER_WEBHOOK_URL` (public URL ending in `/webhook`), `WEBHOOK_SECRET`, `RENOVATE_TARGET_REPOSITORIES`, then `python3 scripts/sync_webhooks.py`. Re-run it when a project is added. It only supports the secret token, not the signing token.
+3. Install MR webhooks: set `CI_API_V4_URL`, `GITLAB_WEBHOOK_ADMIN_TOKEN`, `NOTIFIER_WEBHOOK_URL` (public URL ending in `/renovate/webhook`), `WEBHOOK_SECRET`, `RENOVATE_TARGET_REPOSITORIES`, then `python3 scripts/sync_webhooks.py`. Re-run it when a project is added. It only supports the secret token, not the signing token.
 
 ### GitHub
 
 1. Use a bot user (PAT) or your Renovate GitHub App. `RENOVATE_AUTHOR` is the login that authors the PRs, e.g. `renovate[bot]`.
 2. Copy this repo to GitHub. Actions secret `RENOVATE_TOKEN`; variables `RENOVATE_TARGET_REPOSITORIES` or `RENOVATE_TEST_REPOSITORY`. The workflow [`renovate.yml`](.github/workflows/renovate.yml) runs on a schedule and manually.
-3. Webhook: Organization (or repository) Settings → Webhooks → Add. Payload URL `https://notify.example.com/webhook`, **Content type `application/json`**, Secret = `WEBHOOK_SECRET`, event **Pull requests** only. A single organization webhook covers every repository, new ones included.
+3. Webhook: Organization (or repository) Settings → Webhooks → Add. Payload URL `https://notify.example.com/renovate/webhook`, **Content type `application/json`**, Secret = `WEBHOOK_SECRET`, event **Pull requests** only. A single organization webhook covers every repository, new ones included.
 
 ### Bitbucket Cloud
 
 1. Create a bot account and an API token with the scopes in the [Renovate Bitbucket docs](https://docs.renovatebot.com/modules/platform/bitbucket/) (the Renovate account also needs a user group with "Create repositories"). `RENOVATE_AUTHOR` is its `uuid` including braces (`GET https://api.bitbucket.org/2.0/user`) or its `account_id`. Note the Bitbucket Dependency Dashboard does not work because Bitbucket removed issues.
 2. Host this repo on Bitbucket; set the variables listed in [`bitbucket-pipelines.yml`](bitbucket-pipelines.yml) and add a schedule for the custom pipeline `renovate`.
-3. Webhook: Workspace settings → Webhooks (or per repository) → Add. URL ending in `/webhook`, Secret = `WEBHOOK_SECRET`, trigger **Pull Request → Created**.
+3. Webhook: Workspace settings → Webhooks (or per repository) → Add. URL ending in `/renovate/webhook`, Secret = `WEBHOOK_SECRET`, trigger **Pull Request → Created**.
 
 The Renovate runner can live on a different platform from the repositories it updates (set `RENOVATE_PLATFORM` and a token for the target platform).
 

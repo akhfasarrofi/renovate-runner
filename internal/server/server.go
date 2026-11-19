@@ -50,7 +50,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // webhook answers 200 for events that need no notification, 503 when any channel fails so
 // the platform may retry, and 401/400/413 for rejected requests.
 func (s *Server) webhook(w http.ResponseWriter, r *http.Request) {
-	if r.RequestURI != "/webhook" {
+	if r.RequestURI != "/renovate/webhook" {
 		respond(w, http.StatusNotFound, "")
 		return
 	}

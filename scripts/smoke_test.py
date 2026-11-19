@@ -107,7 +107,7 @@ def main():
         headers["X-Gitlab-Token"] = secret
         bad_headers = {**headers, "X-Gitlab-Token": "incorrect-secret"}
 
-    url = args.url + "/webhook"
+    url = args.url + "/renovate/webhook"
     bad = request(url, "POST", body, bad_headers)
     print(f"Wrong credential: {bad} (expected 401)")
     if bad != 401:

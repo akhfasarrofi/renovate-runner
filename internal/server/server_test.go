@@ -69,7 +69,7 @@ func TestWebhookDeliveryAndDedup(t *testing.T) {
 	s := &Server{Cfg: cfg, Platform: pf, Store: n, Now: time.Now}
 	post := func(payload any, secret string) int {
 		body, _ := json.Marshal(payload)
-		r := httptest.NewRequest("POST", "/webhook", strings.NewReader(string(body)))
+		r := httptest.NewRequest("POST", "/renovate/webhook", strings.NewReader(string(body)))
 		r.Header.Set("X-Gitlab-Token", secret)
 		r.Header.Set("X-Gitlab-Event", "Merge Request Hook")
 		w := httptest.NewRecorder()

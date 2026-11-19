@@ -1,6 +1,7 @@
 """Add/update MR webhooks on RENOVATE_TEST_REPOSITORY (one project), else on every
 project in RENOVATE_TARGET_REPOSITORIES (GitLab groups).
 
+Reads variables from the shell, falling back to .env in the repo root.
 Requires a GitLab token with Maintainer access to each project in those groups.
 Only hooks with the exact configured URL are managed; no hooks are deleted.
 """
@@ -8,9 +9,12 @@ Only hooks with the exact configured URL are managed; no hooks are deleted.
 import json
 import os
 import sys
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
+
+from smoke_test import read_env
 
 
 def groups(value):
@@ -20,11 +24,20 @@ def groups(value):
     return names
 
 
+def snippet(raw):
+    return raw[:200].decode(errors="replace").replace("\n", " ") or "<empty body>"
+
+
 def api(method, url, token, fields=None):
     body = urlencode(fields).encode() if fields is not None else None
     request = Request(url, data=body, method=method, headers={"PRIVATE-TOKEN": token})
     with urlopen(request, timeout=15) as response:
-        return json.load(response)
+        raw = response.read()
+        try:
+            return json.loads(raw)
+        except ValueError:
+            raise ValueError(f"{method} {url} returned HTTP {response.status} "
+                             f"({response.headers.get('Content-Type')}), not JSON: {snippet(raw)}")
 
 
 def get_all(url, token):
@@ -71,6 +84,11 @@ def sync(api_url, token, webhook_url, secret, paths):
 
 
 def main():
+    # Same .env as the notifier; variables already exported in the shell win.
+    env_file = Path(__file__).parents[1] / ".env"
+    if env_file.exists():
+        for name, value in read_env(env_file).items():
+            os.environ.setdefault(name, value)
     needed = ("CI_API_V4_URL", "GITLAB_WEBHOOK_ADMIN_TOKEN", "NOTIFIER_WEBHOOK_URL",
               "WEBHOOK_SECRET")
     test_repository = os.environ.get("RENOVATE_TEST_REPOSITORY", "").strip()
@@ -96,9 +114,9 @@ if __name__ == "__main__":
     try:
         main()
     except (ValueError, HTTPError, URLError) as error:
-        # HTTPError bodies can contain credential details; log only status.
         if isinstance(error, HTTPError):
-            print(f"GitLab webhook API returned HTTP {error.code}", file=sys.stderr)
+            print(f"GitLab API returned HTTP {error.code} for {error.geturl()}: {snippet(error.read())}",
+                  file=sys.stderr)
         else:
             print(f"Webhook sync failed: {error}", file=sys.stderr)
         sys.exit(1)

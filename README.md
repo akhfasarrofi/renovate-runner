@@ -6,34 +6,34 @@ Run [Renovate](https://docs.renovatebot.com/) across many repositories on **GitL
 
 Two independent parts:
 
-| Part | What it does | Runs as |
-|---|---|---|
+| Part                                 | What it does                                             | Runs as                                                                                             |
+| ------------------------------------ | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | **Renovate** (`config.js`, CI files) | Finds outdated/vulnerable dependencies and opens MRs/PRs | A scheduled CI job: `.gitlab-ci.yml`, `.github/workflows/renovate.yml` or `bitbucket-pipelines.yml` |
-| **Notifier** (`cmd/`, `internal/`) | Receives MR/PR webhooks and sends notifications | An always-on HTTP service (Docker) |
+| **Notifier** (`cmd/`, `internal/`)   | Receives MR/PR webhooks and sends notifications          | An always-on HTTP service (Docker)                                                                  |
 
 The notifier is not started by the pipeline. It reacts to webhooks, so a message arrives seconds after the MR/PR is created.
 
 ![Architecture of renovate-runner: the Renovate CI job opens MRs/PRs, the platform sends a webhook through an HTTPS proxy to the notifier, which filters, deduplicates in SQLite and sends Telegram and Slack messages](docs/renovate-runner-and-mr-notifier.webp)
 
-Interactive version: [`docs/architecture.html`](docs/architecture.html) (search nodes, trace routes, export).
+Interactive version: [`klik`](https://renovate-runner.pages.dev) (search nodes, trace routes, export).
 
-| | GitLab | GitHub | Bitbucket Cloud |
-|---|---|---|---|
-| Webhook auth | secret token or signing token | HMAC `X-Hub-Signature-256` | HMAC `X-Hub-Signature` |
-| Reopen simulation | yes | yes | no (cannot reopen) |
-| Webhook install | `scripts/sync_webhooks.py` | one organization webhook | one workspace webhook |
-| Bot identity (`RENOVATE_AUTHOR`) | numeric user ID | login | `account_id` or `uuid` |
+|                                  | GitLab                        | GitHub                     | Bitbucket Cloud        |
+| -------------------------------- | ----------------------------- | -------------------------- | ---------------------- |
+| Webhook auth                     | secret token or signing token | HMAC `X-Hub-Signature-256` | HMAC `X-Hub-Signature` |
+| Reopen simulation                | yes                           | yes                        | no (cannot reopen)     |
+| Webhook install                  | `scripts/sync_webhooks.py`    | one organization webhook   | one workspace webhook  |
+| Bot identity (`RENOVATE_AUTHOR`) | numeric user ID               | login                      | `account_id` or `uuid` |
 
 Bitbucket Data Center/Server is not supported (different headers and payloads).
 
 > **Status.** GitLab is tested end to end in simulation. For the others, no live webhook has been sent yet; what was checked against primary sources:
 >
-> | Checked | GitHub | Bitbucket Cloud |
-> |---|---|---|
-> | Signature header, format, algorithm | docs | docs (plus the documented test vector, in a unit test) |
-> | Payload fields the parser reads | a real sample payload from `octokit/webhooks` (used as a test fixture) | partly: the REST schema and a third-party sample; `author.uuid` is the reliable ID, `repository.mainbranch` is not documented in webhooks |
-> | Renovate PR description still parses | yes: the OSV body is platform-independent, and the GitHub/Bitbucket link and `<details>` rewriting was replayed through the parser | yes (same replay; Bitbucket turns `<details>` into `**More information**`) |
-> | Retries | none automatic (docs), 10 s timeout | retried twice, 10 s timeout (third-party source) |
+> | Checked                              | GitHub                                                                                                                             | Bitbucket Cloud                                                                                                                           |
+> | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+> | Signature header, format, algorithm  | docs                                                                                                                               | docs (plus the documented test vector, in a unit test)                                                                                    |
+> | Payload fields the parser reads      | a real sample payload from `octokit/webhooks` (used as a test fixture)                                                             | partly: the REST schema and a third-party sample; `author.uuid` is the reliable ID, `repository.mainbranch` is not documented in webhooks |
+> | Renovate PR description still parses | yes: the OSV body is platform-independent, and the GitHub/Bitbucket link and `<details>` rewriting was replayed through the parser | yes (same replay; Bitbucket turns `<details>` into `**More information**`)                                                                |
+> | Retries                              | none automatic (docs), 10 s timeout                                                                                                | retried twice, 10 s timeout (third-party source)                                                                                          |
 >
 > Please report any mismatch you see on a real delivery.
 
@@ -72,30 +72,30 @@ Copy [`env.example`](env.example) to `.env` (never commit it). Values are plain 
 
 ### Notifier (`.env`)
 
-| Variable | Required | Description |
-|---|---|---|
-| `RENOVATE_PLATFORM` | no | `gitlab` (default), `github`, `bitbucket`. Renovate reads the same variable. |
-| `RENOVATE_AUTHOR` | yes | Renovate bot identity (see table above). Old name `RENOVATE_AUTHOR_ID` still works. |
-| `WEBHOOK_SECRET` | one of two | Shared webhook secret (`openssl rand -hex 32`). Old name `GITLAB_WEBHOOK_SECRET` still works. |
-| `GITLAB_WEBHOOK_SIGNING_TOKEN` | one of two | GitLab 19.1+ `whsec_...` token. GitLab only; not together with the secret. |
-| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | one channel | Both or neither. |
-| `TELEGRAM_MESSAGE_THREAD_ID` | no | Forum topic ID. |
-| `SLACK_WEBHOOK_URL` | one channel | Incoming webhook, `https://` only. |
-| `NOTIFY_LANG` | no | `en` (default) or `id`. |
-| `REOPEN_TEST_MR` | no | `repo_id:iid`; simulate a reopen for one MR/PR. Leave empty in production. |
+| Variable                                 | Required    | Description                                                                                   |
+| ---------------------------------------- | ----------- | --------------------------------------------------------------------------------------------- |
+| `RENOVATE_PLATFORM`                      | no          | `gitlab` (default), `github`, `bitbucket`. Renovate reads the same variable.                  |
+| `RENOVATE_AUTHOR`                        | yes         | Renovate bot identity (see table above). Old name `RENOVATE_AUTHOR_ID` still works.           |
+| `WEBHOOK_SECRET`                         | one of two  | Shared webhook secret (`openssl rand -hex 32`). Old name `GITLAB_WEBHOOK_SECRET` still works. |
+| `GITLAB_WEBHOOK_SIGNING_TOKEN`           | one of two  | GitLab 19.1+ `whsec_...` token. GitLab only; not together with the secret.                    |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | one channel | Both or neither.                                                                              |
+| `TELEGRAM_MESSAGE_THREAD_ID`             | no          | Forum topic ID.                                                                               |
+| `SLACK_WEBHOOK_URL`                      | one channel | Incoming webhook, `https://` only.                                                            |
+| `NOTIFY_LANG`                            | no          | `en` (default) or `id`.                                                                       |
+| `REOPEN_TEST_MR`                         | no          | `repo_id:iid`; simulate a reopen for one MR/PR. Leave empty in production.                    |
 
 At least one channel must be enabled or the notifier exits at start.
 
 ### Renovate (CI variables, **not** the notifier `.env`)
 
-| Variable | Description |
-|---|---|
-| `RENOVATE_PLATFORM` | Same as above. |
-| `RENOVATE_TOKEN` | Renovate token (GitLab, GitHub). |
+| Variable                                 | Description                                                                                                                                                                                                               |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RENOVATE_PLATFORM`                      | Same as above.                                                                                                                                                                                                            |
+| `RENOVATE_TOKEN`                         | Renovate token (GitLab, GitHub).                                                                                                                                                                                          |
 | `RENOVATE_USERNAME`, `RENOVATE_PASSWORD` | Bitbucket Cloud: the Renovate account's Atlassian email and an API token with repository, pull request, user and workspace read/write scopes ([Renovate docs](https://docs.renovatebot.com/modules/platform/bitbucket/)). |
-| `RENOVATE_TARGET_REPOSITORIES` | GitLab groups, GitHub orgs/users, or Bitbucket workspaces, comma-separated. Every repository inside runs. |
-| `RENOVATE_TEST_REPOSITORY` | Test mode: one `owner/repo`; overrides the list. Empty to go live. |
-| `RENOVATE_ENDPOINT` | Self-hosted GitHub Enterprise / custom API URL. GitLab CI sets `CI_API_V4_URL` automatically. |
+| `RENOVATE_TARGET_REPOSITORIES`           | GitLab groups, GitHub orgs/users, or Bitbucket workspaces, comma-separated. Every repository inside runs.                                                                                                                 |
+| `RENOVATE_TEST_REPOSITORY`               | Test mode: one `owner/repo`; overrides the list. Empty to go live.                                                                                                                                                        |
+| `RENOVATE_ENDPOINT`                      | Self-hosted GitHub Enterprise / custom API URL. GitLab CI sets `CI_API_V4_URL` automatically.                                                                                                                             |
 
 GitHub and Bitbucket discovery uses `autodiscoverFilter` (`org/*`) because Renovate documents `autodiscoverNamespaces` only for GitLab, Gitea and Forgejo. The filter lists all repositories the token can see and then filters, so use a token scoped to what you need.
 
@@ -151,17 +151,17 @@ Sends a fake **GitLab** security MR to `127.0.0.1:8080` and really delivers a me
 
 ## Troubleshooting
 
-| Symptom | Likely cause |
-|---|---|
-| Notifier exits at start | Missing `RENOVATE_AUTHOR`, webhook credential or channel; the log names it |
-| No notification, platform shows 200 | Filtered: not the bot, not default branch, no OSV severity, or reopen |
-| 401 | Secret mismatch. GitHub: content type must be `application/json`. GitLab signing token: clock skew over 300 s is rejected |
-| 503 | Telegram/Slack delivery failed; see `delivery failed` in the logs |
-| 413 | Empty body or over 1 MB; check proxy `client_max_body_size` |
-| Renovate does not run | GitLab: job is schedule-only. GitHub/Bitbucket: check the schedule |
-| Renovate skips repositories | Token has no access to them |
-| Duplicate notifications | `/data` volume lost |
-| GitHub/Bitbucket body not parsed | Message falls back to the title; open an issue with a sample description |
+| Symptom                             | Likely cause                                                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Notifier exits at start             | Missing `RENOVATE_AUTHOR`, webhook credential or channel; the log names it                                                |
+| No notification, platform shows 200 | Filtered: not the bot, not default branch, no OSV severity, or reopen                                                     |
+| 401                                 | Secret mismatch. GitHub: content type must be `application/json`. GitLab signing token: clock skew over 300 s is rejected |
+| 503                                 | Telegram/Slack delivery failed; see `delivery failed` in the logs                                                         |
+| 413                                 | Empty body or over 1 MB; check proxy `client_max_body_size`                                                               |
+| Renovate does not run               | GitLab: job is schedule-only. GitHub/Bitbucket: check the schedule                                                        |
+| Renovate skips repositories         | Token has no access to them                                                                                               |
+| Duplicate notifications             | `/data` volume lost                                                                                                       |
+| GitHub/Bitbucket body not parsed    | Message falls back to the title; open an issue with a sample description                                                  |
 
 Logs never include the Telegram token or Slack URL.
 

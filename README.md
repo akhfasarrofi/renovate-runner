@@ -93,8 +93,7 @@ At least one channel must be enabled or the notifier exits at start.
 | `RENOVATE_PLATFORM`                      | Same as above.                                                                                                                                                                                                            |
 | `RENOVATE_TOKEN`                         | Renovate token (GitLab, GitHub).                                                                                                                                                                                          |
 | `RENOVATE_USERNAME`, `RENOVATE_PASSWORD` | Bitbucket Cloud: the Renovate account's Atlassian email and an API token with repository, pull request, user and workspace read/write scopes ([Renovate docs](https://docs.renovatebot.com/modules/platform/bitbucket/)). |
-| `RENOVATE_TARGET_REPOSITORIES`           | GitLab groups, GitHub orgs/users, or Bitbucket workspaces, comma-separated. Every repository inside runs.                                                                                                                 |
-| `RENOVATE_TEST_REPOSITORY`               | Test mode: one `owner/repo`; overrides the list. Empty to go live.                                                                                                                                                        |
+| `RENOVATE_TARGET_REPOSITORY`            | Comma-separated, either `owner/repo` paths (only those) or group/org/workspace names (every repository inside). Not mixed; a value with `/` is always a repository.                                                      |
 | `RENOVATE_ENDPOINT`                      | Self-hosted GitHub Enterprise / custom API URL. GitLab CI sets `CI_API_V4_URL` automatically.                                                                                                                             |
 
 GitHub and Bitbucket discovery uses `autodiscoverFilter` (`org/*`) because Renovate documents `autodiscoverNamespaces` only for GitLab, Gitea and Forgejo. The filter lists all repositories the token can see and then filters, so use a token scoped to what you need.
@@ -118,13 +117,13 @@ curl http://127.0.0.1:8080/healthz    # prints "ok"
 ### GitLab
 
 1. Create a bot user with Developer/Maintainer on the target groups; its token is `RENOVATE_TOKEN`, its numeric ID is `RENOVATE_AUTHOR`.
-2. In CI/CD → Variables set `RENOVATE_TOKEN` and `RENOVATE_TARGET_REPOSITORIES` (or `RENOVATE_TEST_REPOSITORY`). Add a pipeline schedule; the `renovate` job runs only for schedules (use Play on the schedule).
-3. Install MR webhooks: set `CI_API_V4_URL`, `GITLAB_WEBHOOK_ADMIN_TOKEN`, `NOTIFIER_WEBHOOK_URL` (public URL ending in `/renovate/webhook`), `WEBHOOK_SECRET`, `RENOVATE_TARGET_REPOSITORIES`, then `python3 scripts/sync_webhooks.py`. Re-run it when a project is added. It only supports the secret token, not the signing token.
+2. In CI/CD → Variables set `RENOVATE_TOKEN` and `RENOVATE_TARGET_REPOSITORY`. Add a pipeline schedule; the `renovate` job runs only for schedules (use Play on the schedule).
+3. Install MR webhooks: set `CI_API_V4_URL`, `GITLAB_WEBHOOK_ADMIN_TOKEN`, `NOTIFIER_WEBHOOK_URL` (public URL ending in `/renovate/webhook`), `WEBHOOK_SECRET`, `RENOVATE_TARGET_REPOSITORY`, then `python3 scripts/sync_webhooks.py`. Re-run it when a project is added. It only supports the secret token, not the signing token.
 
 ### GitHub
 
 1. Use a bot user (PAT) or your Renovate GitHub App. `RENOVATE_AUTHOR` is the login that authors the PRs, e.g. `renovate[bot]`.
-2. Copy this repo to GitHub. Actions secret `RENOVATE_TOKEN`; variables `RENOVATE_TARGET_REPOSITORIES` or `RENOVATE_TEST_REPOSITORY`. The workflow [`renovate.yml`](.github/workflows/renovate.yml) runs on a schedule and manually.
+2. Copy this repo to GitHub. Actions secret `RENOVATE_TOKEN`; variables `RENOVATE_TARGET_REPOSITORY`. The workflow [`renovate.yml`](.github/workflows/renovate.yml) runs on a schedule and manually.
 3. Webhook: Organization (or repository) Settings → Webhooks → Add. Payload URL `https://notify.example.com/renovate/webhook`, **Content type `application/json`**, Secret = `WEBHOOK_SECRET`, event **Pull requests** only. A single organization webhook covers every repository, new ones included.
 
 ### Bitbucket Cloud
@@ -137,9 +136,9 @@ The Renovate runner can live on a different platform from the repositories it up
 
 ### Rollout: one repository first
 
-1. Set `RENOVATE_TEST_REPOSITORY=owner/repo` (optionally `RENOVATE_DRY_RUN=full`, `LOG_LEVEL=debug`) and run the job.
+1. Set `RENOVATE_TARGET_REPOSITORY=owner/repo` (optionally `RENOVATE_DRY_RUN=full`, `LOG_LEVEL=debug`) and run the job.
 2. Check the MR/PR and the notification.
-3. Go live: clear `RENOVATE_TEST_REPOSITORY`, set `RENOVATE_TARGET_REPOSITORIES`.
+3. Go live: set `RENOVATE_TARGET_REPOSITORY` to the group name(s).
 
 ## Verify
 

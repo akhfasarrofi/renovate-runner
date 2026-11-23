@@ -1,5 +1,5 @@
 # Runs Renovate on GitHub. Set the secret RENOVATE_TOKEN and the variables
-# RENOVATE_TARGET_REPOSITORIES (orgs/users, comma-separated) or RENOVATE_TEST_REPOSITORY.
+# RENOVATE_TARGET_REPOSITORY (owner/repo list, or orgs/users, comma-separated).
 name: renovate
 on:
   schedule:
@@ -18,5 +18,4 @@ jobs:
           RENOVATE_CONFIG_FILE: ${{ github.workspace }}/config.js
           RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
           GITHUB_COM_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
-          RENOVATE_TARGET_REPOSITORIES: ${{ vars.RENOVATE_TARGET_REPOSITORIES }}
-          RENOVATE_TEST_REPOSITORY: ${{ vars.RENOVATE_TEST_REPOSITORY }}
+          RENOVATE_TARGET_REPOSITORY: ${{ vars.RENOVATE_TARGET_REPOSITORY }}

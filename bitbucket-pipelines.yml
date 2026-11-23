@@ -1,7 +1,7 @@
 # Bitbucket Cloud. Add a schedule for the custom pipeline "renovate" (Repository settings >
 # Pipelines > Schedules). Set the variables RENOVATE_USERNAME (Atlassian email) and
 # RENOVATE_PASSWORD (API token, scopes: https://docs.renovatebot.com/modules/platform/bitbucket/),
-# RENOVATE_TARGET_REPOSITORIES (workspaces) or RENOVATE_TEST_REPOSITORY. GITHUB_COM_TOKEN is optional (release notes).
+# RENOVATE_TARGET_REPOSITORY (workspace/repo list, or workspaces). GITHUB_COM_TOKEN is optional (release notes).
 pipelines:
   default:
     - step:

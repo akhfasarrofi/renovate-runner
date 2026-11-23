@@ -1,5 +1,5 @@
-"""Add/update MR webhooks on RENOVATE_TEST_REPOSITORY (comma-separated projects), else on every
-project in RENOVATE_TARGET_REPOSITORIES (GitLab groups).
+"""Add/update MR webhooks on RENOVATE_TARGET_REPOSITORY: comma-separated group/project paths, or
+comma-separated group names (every project in the group, subgroups included).
 
 Reads variables from the shell, falling back to .env in the repo root.
 Requires a GitLab token with Maintainer access to each project in those groups.
@@ -17,11 +17,15 @@ from urllib.request import Request, urlopen
 from smoke_test import read_env
 
 
-def groups(value):
+def targets(value):
+    """Split RENOVATE_TARGET_REPOSITORY into (projects, groups); an entry with "/" is a project."""
     names = [name.strip() for name in value.replace("\n", ",").split(",") if name.strip()]
     if not names or len(names) != len(set(names)):
-        raise ValueError("RENOVATE_TARGET_REPOSITORIES must list unique GitLab group names")
-    return names
+        raise ValueError("RENOVATE_TARGET_REPOSITORY must list unique project paths or group names")
+    projects = [name for name in names if "/" in name]
+    if projects and len(projects) != len(names):
+        raise ValueError("RENOVATE_TARGET_REPOSITORY must list either project paths or group names, not both")
+    return projects, [] if projects else names
 
 
 def snippet(raw):
@@ -101,23 +105,16 @@ def main():
         for name, value in read_env(env_file).items():
             os.environ.setdefault(name, value)
     needed = ("CI_API_V4_URL", "GITLAB_WEBHOOK_ADMIN_TOKEN", "NOTIFIER_WEBHOOK_URL",
-              "WEBHOOK_SECRET")
-    test_repositories = [item.strip() for item in
-                         os.environ.get("RENOVATE_TEST_REPOSITORY", "").replace("\n", ",").split(",")
-                         if item.strip()]
-    if not test_repositories:
-        needed += ("RENOVATE_TARGET_REPOSITORIES",)
-    elif any("/" not in item for item in test_repositories):
-        raise ValueError("RENOVATE_TEST_REPOSITORY must list group/project paths")
+              "WEBHOOK_SECRET", "RENOVATE_TARGET_REPOSITORY")
     missing = [name for name in needed if not os.environ.get(name)]
     if missing:
         raise ValueError("Missing: " + ", ".join(missing))
+    projects, group_names = targets(os.environ["RENOVATE_TARGET_REPOSITORY"])
     webhook_url = os.environ["NOTIFIER_WEBHOOK_URL"]
     if not webhook_url.startswith("https://") or not webhook_url.endswith("/renovate/webhook"):
         raise ValueError("NOTIFIER_WEBHOOK_URL must be an HTTPS URL ending in /renovate/webhook")
     api_url, token = os.environ["CI_API_V4_URL"], os.environ["GITLAB_WEBHOOK_ADMIN_TOKEN"]
-    paths = (sorted(set(test_repositories)) if test_repositories else
-             projects_in(api_url, token, groups(os.environ["RENOVATE_TARGET_REPOSITORIES"])))
+    paths = projects or projects_in(api_url, token, group_names)
     if not paths:
         raise ValueError("No active projects found in the configured groups")
     sync(api_url, token, webhook_url, os.environ["WEBHOOK_SECRET"], paths)

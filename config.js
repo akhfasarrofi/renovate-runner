@@ -42,7 +42,12 @@ module.exports = {
   ...(platform === "gitlab" && process.env.CI_API_V4_URL
     ? { endpoint: process.env.CI_API_V4_URL }
     : {}),
-  globalExtends: ["config:recommended", "mergeConfidence:all-badges"],
+  globalExtends: [
+    "config:recommended",
+    "mergeConfidence:all-badges",
+    "security:php2shell",
+    "security:gomodIndirectSecurityUpdates",
+  ],
   onboarding: false,
   requireConfig: "optional",
   automerge: false,

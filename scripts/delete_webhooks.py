@@ -2,7 +2,7 @@
 
 Usage: python3 scripts/delete_webhooks.py <exact-webhook-url> [--yes]
 Dry run unless --yes is passed. Only hooks with the exact URL are touched.
-Same env as sync_webhooks.py (CI_API_V4_URL, GITLAB_WEBHOOK_ADMIN_TOKEN,
+Same env as sync_webhooks.py (CI_API_V4_URL, RENOVATE_TOKEN,
 RENOVATE_TARGET_REPOSITORY), read from the shell, falling back to .env.
 """
 
@@ -22,27 +22,45 @@ def main(webhook_url, apply):
     if env_file.exists():
         for name, value in read_env(env_file).items():
             os.environ.setdefault(name, value)
-    needed = ("CI_API_V4_URL", "GITLAB_WEBHOOK_ADMIN_TOKEN", "RENOVATE_TARGET_REPOSITORY")
+    needed = ("CI_API_V4_URL", "RENOVATE_TOKEN", "RENOVATE_TARGET_REPOSITORY")
     missing = [name for name in needed if not os.environ.get(name)]
     if missing:
         raise ValueError("Missing: " + ", ".join(missing))
-    api_url, token = os.environ["CI_API_V4_URL"].rstrip("/"), os.environ["GITLAB_WEBHOOK_ADMIN_TOKEN"]
+    api_url, token = (
+        os.environ["CI_API_V4_URL"].rstrip("/"),
+        os.environ["RENOVATE_TOKEN"],
+    )
     projects, group_names = targets(os.environ["RENOVATE_TARGET_REPOSITORY"])
     failed = found = 0
     for path in projects or projects_in(api_url, token, group_names):
         hooks_url = f"{api_url}/projects/{quote(path, safe='')}/hooks"
         try:
-            for hook in (h for h in get_all(hooks_url, token) if h.get("url") == webhook_url):
+            for hook in (
+                h for h in get_all(hooks_url, token) if h.get("url") == webhook_url
+            ):
                 found += 1
                 if apply:
                     # 204 has no body, so api() (which parses JSON) cannot be used.
-                    urlopen(Request(f"{hooks_url}/{hook['id']}", method="DELETE",
-                                    headers={"PRIVATE-TOKEN": token}), timeout=15).close()
-                print(f"{'Deleted' if apply else 'Would delete'} hook {hook['id']}: {path}")
+                    urlopen(
+                        Request(
+                            f"{hooks_url}/{hook['id']}",
+                            method="DELETE",
+                            headers={"PRIVATE-TOKEN": token},
+                        ),
+                        timeout=15,
+                    ).close()
+                print(
+                    f"{'Deleted' if apply else 'Would delete'} hook {hook['id']}: {path}"
+                )
         except HTTPError as error:
-            print(f"FAILED {path}: HTTP {error.code} {snippet(error.read())}", file=sys.stderr)
+            print(
+                f"FAILED {path}: HTTP {error.code} {snippet(error.read())}",
+                file=sys.stderr,
+            )
             failed += 1
-    print(f"{found} hook(s) {'deleted' if apply else 'found (dry run, pass --yes to delete)'}")
+    print(
+        f"{found} hook(s) {'deleted' if apply else 'found (dry run, pass --yes to delete)'}"
+    )
     if failed:
         raise ValueError(f"{failed} project(s) failed")
 

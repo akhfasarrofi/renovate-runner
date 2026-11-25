@@ -72,17 +72,17 @@ Copy [`env.example`](env.example) to `.env` (never commit it). Values are plain 
 
 ### Notifier (`.env`)
 
-| Variable                                 | Required    | Description                                                                                   |
-| ---------------------------------------- | ----------- | --------------------------------------------------------------------------------------------- |
-| `RENOVATE_PLATFORM`                      | no          | `gitlab` (default), `github`, `bitbucket`. Renovate reads the same variable.                  |
-| `RENOVATE_AUTHOR`                        | yes         | Renovate bot identity (see table above).           |
-| `WEBHOOK_SECRET`                         | one of two  | Shared webhook secret (`openssl rand -hex 32`). |
-| `GITLAB_WEBHOOK_SIGNING_TOKEN`           | one of two  | GitLab 19.1+ `whsec_...` token. GitLab only; not together with the secret.                    |
-| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | one channel | Both or neither.                                                                              |
-| `TELEGRAM_MESSAGE_THREAD_ID`             | no          | Forum topic ID.                                                                               |
-| `SLACK_WEBHOOK_URL`                      | one channel | Incoming webhook, `https://` only.                                                            |
-| `NOTIFY_LANG`                            | no          | `en` (default) or `id`.                                                                       |
-| `REOPEN_TEST_MR`                         | no          | `repo_id:iid`; simulate a reopen for one MR/PR. Leave empty in production.                    |
+| Variable                                 | Required    | Description                                                                  |
+| ---------------------------------------- | ----------- | ---------------------------------------------------------------------------- |
+| `RENOVATE_PLATFORM`                      | no          | `gitlab` (default), `github`, `bitbucket`. Renovate reads the same variable. |
+| `RENOVATE_AUTHOR`                        | yes         | Renovate bot identity (see table above).                                     |
+| `WEBHOOK_SECRET`                         | one of two  | Shared webhook secret (`openssl rand -hex 32`).                              |
+| `GITLAB_WEBHOOK_SIGNING_TOKEN`           | one of two  | GitLab 19.1+ `whsec_...` token. GitLab only; not together with the secret.   |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | one channel | Both or neither.                                                             |
+| `TELEGRAM_MESSAGE_THREAD_ID`             | no          | Forum topic ID.                                                              |
+| `SLACK_WEBHOOK_URL`                      | one channel | Incoming webhook, `https://` only.                                           |
+| `NOTIFY_LANG`                            | no          | `en` (default) or `id`.                                                      |
+| `REOPEN_TEST_MR`                         | no          | `repo_id:iid`; simulate a reopen for one MR/PR. Leave empty in production.   |
 
 At least one channel must be enabled or the notifier exits at start.
 
@@ -93,7 +93,7 @@ At least one channel must be enabled or the notifier exits at start.
 | `RENOVATE_PLATFORM`                      | Same as above.                                                                                                                                                                                                            |
 | `RENOVATE_TOKEN`                         | Renovate token (GitLab, GitHub).                                                                                                                                                                                          |
 | `RENOVATE_USERNAME`, `RENOVATE_PASSWORD` | Bitbucket Cloud: the Renovate account's Atlassian email and an API token with repository, pull request, user and workspace read/write scopes ([Renovate docs](https://docs.renovatebot.com/modules/platform/bitbucket/)). |
-| `RENOVATE_TARGET_REPOSITORY`            | Comma-separated, either `owner/repo` paths (only those) or group/org/workspace names (every repository inside). Not mixed; a value with `/` is always a repository.                                                      |
+| `RENOVATE_TARGET_REPOSITORY`             | Comma-separated, either `owner/repo` paths (only those) or group/org/workspace names (every repository inside). Not mixed; a value with `/` is always a repository.                                                       |
 | `RENOVATE_ENDPOINT`                      | Self-hosted GitHub Enterprise / custom API URL. GitLab CI sets `CI_API_V4_URL` automatically.                                                                                                                             |
 
 GitHub and Bitbucket discovery uses `autodiscoverFilter` (`org/*`) because Renovate documents `autodiscoverNamespaces` only for GitLab, Gitea and Forgejo. The filter lists all repositories the token can see and then filters, so use a token scoped to what you need.
@@ -118,7 +118,7 @@ curl http://127.0.0.1:8080/healthz    # prints "ok"
 
 1. Create a bot user with Developer/Maintainer on the target groups; its token is `RENOVATE_TOKEN`, its numeric ID is `RENOVATE_AUTHOR`.
 2. In CI/CD → Variables set `RENOVATE_TOKEN` and `RENOVATE_TARGET_REPOSITORY`. Add a pipeline schedule; the `renovate` job runs only for schedules (use Play on the schedule).
-3. Install MR webhooks: set `CI_API_V4_URL`, `GITLAB_WEBHOOK_ADMIN_TOKEN`, `NOTIFIER_WEBHOOK_URL` (public URL ending in `/renovate/webhook`), `WEBHOOK_SECRET`, `RENOVATE_TARGET_REPOSITORY`, then `python3 scripts/sync_webhooks.py`. Re-run it when a project is added. It only supports the secret token, not the signing token.
+3. Install MR webhooks: set `CI_API_V4_URL`, `RENOVATE_TOKEN`, `NOTIFIER_WEBHOOK_URL` (public URL ending in `/renovate/webhook`), `WEBHOOK_SECRET`, `RENOVATE_TARGET_REPOSITORY`, then `python3 scripts/sync_webhooks.py`. Re-run it when a project is added. It only supports the secret token, not the signing token.
 
 ### GitHub
 

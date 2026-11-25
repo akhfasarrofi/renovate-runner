@@ -19,12 +19,18 @@ from smoke_test import read_env
 
 def targets(value):
     """Split RENOVATE_TARGET_REPOSITORY into (projects, groups); an entry with "/" is a project."""
-    names = [name.strip() for name in value.replace("\n", ",").split(",") if name.strip()]
+    names = [
+        name.strip() for name in value.replace("\n", ",").split(",") if name.strip()
+    ]
     if not names or len(names) != len(set(names)):
-        raise ValueError("RENOVATE_TARGET_REPOSITORY must list unique project paths or group names")
+        raise ValueError(
+            "RENOVATE_TARGET_REPOSITORY must list unique project paths or group names"
+        )
     projects = [name for name in names if "/" in name]
     if projects and len(projects) != len(names):
-        raise ValueError("RENOVATE_TARGET_REPOSITORY must list either project paths or group names, not both")
+        raise ValueError(
+            "RENOVATE_TARGET_REPOSITORY must list either project paths or group names, not both"
+        )
     return projects, [] if projects else names
 
 
@@ -40,15 +46,19 @@ def api(method, url, token, fields=None):
         try:
             return json.loads(raw)
         except ValueError:
-            raise ValueError(f"{method} {url} returned HTTP {response.status} "
-                             f"({response.headers.get('Content-Type')}), not JSON: {snippet(raw)}")
+            raise ValueError(
+                f"{method} {url} returned HTTP {response.status} "
+                f"({response.headers.get('Content-Type')}), not JSON: {snippet(raw)}"
+            )
 
 
 def get_all(url, token):
     """Fetch every page of a GitLab list endpoint."""
     items, page = [], 1
     while True:
-        batch = api("GET", f"{url}{'&' if '?' in url else '?'}per_page=100&page={page}", token)
+        batch = api(
+            "GET", f"{url}{'&' if '?' in url else '?'}per_page=100&page={page}", token
+        )
         if not isinstance(batch, list):
             raise ValueError("Unexpected GitLab list response")
         items.extend(batch)
@@ -72,10 +82,15 @@ def sync(api_url, token, webhook_url, secret, paths):
         try:
             sync_one(api_url, token, webhook_url, secret, path)
         except HTTPError as error:
-            print(f"FAILED {path}: HTTP {error.code} {snippet(error.read())}", file=sys.stderr)
+            print(
+                f"FAILED {path}: HTTP {error.code} {snippet(error.read())}",
+                file=sys.stderr,
+            )
             failed.append(path)
     if failed:
-        raise ValueError(f"{len(failed)} of {len(paths)} projects failed: " + ", ".join(failed))
+        raise ValueError(
+            f"{len(failed)} of {len(paths)} projects failed: " + ", ".join(failed)
+        )
 
 
 def sync_one(api_url, token, webhook_url, secret, path):
@@ -83,7 +98,9 @@ def sync_one(api_url, token, webhook_url, secret, path):
     hooks = get_all(url, token)
     matches = [hook for hook in hooks if hook.get("url") == webhook_url]
     if len(matches) > 1:
-        raise ValueError(f"Multiple hooks have the configured URL in {path}; resolve duplicates manually")
+        raise ValueError(
+            f"Multiple hooks have the configured URL in {path}; resolve duplicates manually"
+        )
     fields = {
         "url": webhook_url,
         "token": secret,
@@ -104,16 +121,25 @@ def main():
     if env_file.exists():
         for name, value in read_env(env_file).items():
             os.environ.setdefault(name, value)
-    needed = ("CI_API_V4_URL", "GITLAB_WEBHOOK_ADMIN_TOKEN", "NOTIFIER_WEBHOOK_URL",
-              "WEBHOOK_SECRET", "RENOVATE_TARGET_REPOSITORY")
+    needed = (
+        "CI_API_V4_URL",
+        "RENOVATE_TOKEN",
+        "NOTIFIER_WEBHOOK_URL",
+        "WEBHOOK_SECRET",
+        "RENOVATE_TARGET_REPOSITORY",
+    )
     missing = [name for name in needed if not os.environ.get(name)]
     if missing:
         raise ValueError("Missing: " + ", ".join(missing))
     projects, group_names = targets(os.environ["RENOVATE_TARGET_REPOSITORY"])
     webhook_url = os.environ["NOTIFIER_WEBHOOK_URL"]
-    if not webhook_url.startswith("https://") or not webhook_url.endswith("/renovate/webhook"):
-        raise ValueError("NOTIFIER_WEBHOOK_URL must be an HTTPS URL ending in /renovate/webhook")
-    api_url, token = os.environ["CI_API_V4_URL"], os.environ["GITLAB_WEBHOOK_ADMIN_TOKEN"]
+    if not webhook_url.startswith("https://") or not webhook_url.endswith(
+        "/renovate/webhook"
+    ):
+        raise ValueError(
+            "NOTIFIER_WEBHOOK_URL must be an HTTPS URL ending in /renovate/webhook"
+        )
+    api_url, token = os.environ["CI_API_V4_URL"], os.environ["RENOVATE_TOKEN"]
     paths = projects or projects_in(api_url, token, group_names)
     if not paths:
         raise ValueError("No active projects found in the configured groups")
@@ -125,8 +151,10 @@ if __name__ == "__main__":
         main()
     except (ValueError, HTTPError, URLError) as error:
         if isinstance(error, HTTPError):
-            print(f"GitLab API returned HTTP {error.code} for {error.geturl()}: {snippet(error.read())}",
-                  file=sys.stderr)
+            print(
+                f"GitLab API returned HTTP {error.code} for {error.geturl()}: {snippet(error.read())}",
+                file=sys.stderr,
+            )
         else:
             print(f"Webhook sync failed: {error}", file=sys.stderr)
         sys.exit(1)
